@@ -60,8 +60,9 @@ object SuspiciousConnects {
         val sparkSession = SparkSession.builder
           .appName("Spot ML:  " + analysis + " suspicious connects analysis")
           .master("yarn")
+          .enableHiveSupport()
           .getOrCreate()
-
+        /*
         val inputDataFrame = InputOutputDataHandler.getInputDataFrame(sparkSession, config.inputPath, logger)
           .getOrElse(sparkSession.emptyDataFrame)
         if(inputDataFrame.rdd.isEmpty()) {
@@ -69,6 +70,17 @@ object SuspiciousConnects {
             s"contains parquet files with a given schema and try again.")
           System.exit(0)
         }
+        */
+
+        val hive_query = "SELECT * FROM " + config.database + "." + config.dataTable + " where (y=" + config.year + " and m=" + config.month + " and d=" + config.day + ")"
+
+        val inputDataFrame = InputOutputDataHandler.getInputDataFrame(sparkSession, hive_query, logger)
+          .getOrElse(sparkSession.emptyDataFrame)
+        if(inputDataFrame.rdd.isEmpty()) {
+          logger.error("No records returned for Hive query " + hive_query +", please verify that data exists or issues with Hive connection.")
+          System.exit(0)
+        }
+
 
         val results: Option[SuspiciousConnectsAnalysisResults] = analysis match {
           case "flow" => Some(FlowSuspiciousConnectsAnalysis.run(config, sparkSession, logger,
